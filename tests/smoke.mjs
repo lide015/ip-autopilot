@@ -9,7 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const URL0 = pathToFileURL(join(root, 'index.html')).href;
+const URL0 = process.env.APP_URL || pathToFileURL(join(root, 'index.html')).href;
 const out = join(tmpdir(), 'ip-autopilot-test');
 mkdirSync(out, { recursive: true });
 
@@ -34,6 +34,12 @@ page.on('pageerror', (e) => errors.push(String(e)));
 const go = async (hash) => { await page.goto(URL0 + hash); await page.waitForTimeout(500); };
 
 await go('');
+if (await page.locator('#gate').count()) {
+  await page.fill('#pw', 'test-only-password');
+  if (await page.locator('#pw2').count()) await page.fill('#pw2', 'test-only-password');
+  await page.click('#gate button');
+  await page.waitForSelector('.onboard');
+}
 ok((await page.textContent('h1')).includes('今天的進度'), '首頁打得開');
 ok(await page.isVisible('.onboard'), '新手引導出現');
 
@@ -95,6 +101,54 @@ ok(await page.isVisible('.card'), '搜尋得到時卡片出現');
 await go('#studio');
 ok(await page.isVisible('[data-act=prompt]'), '沒有金鑰也能用「複製提示詞」');
 
+// 品牌手冊：資料能保存、連結驗證、提示詞含背景、輸出不執行使用者文字。
+await go('#operations');
+const importCheck = await page.evaluate(async () => {
+  await window.Backend.importData({ app: 'ip-autopilot', settings: { goal: '新歌曝光、粉絲成長與活動邀約', aiKey: 'test-import-secret', unexpected: '不應保留' }, items: [] });
+  return window.Backend.exportData();
+});
+ok(importCheck.settings.engineRepo === 'my-account/ip-autopilot' && !JSON.stringify(importCheck).includes('test-import-secret') && !Object.hasOwn(importCheck.settings, 'unexpected'), '匯入品牌配置保留既有引擎設定，忽略金鑰及未知設定');
+ok((await page.textContent('h1')) === '品牌與運營' && (await page.title()).includes('品牌與運營'), '品牌運營入口與頁面標題清楚');
+await page.fill('#o-goal', '新歌曝光、粉絲成長與活動邀約');
+await page.fill('#o-voice', '待試聽；需原片時間碼');
+await page.fill('#o-evidence', '<img src=x onerror="alert(1)">｜團隊帳號待核對');
+await page.fill('#o-lineUrl', 'https://line.me.evil.example/test');
+await page.click('#opsf button[type=submit]');
+ok(await page.isVisible('#o-lineUrl-err') && (await page.locator('#o-lineUrl').getAttribute('aria-describedby')).includes('line-help'), '假 LINE 網域被擋下，欄位同時保留說明及錯誤');
+await page.fill('#o-lineUrl', 'https://lin.ee/example');
+ok((await page.locator('#o-lineUrl').getAttribute('aria-describedby')) === 'line-help', '修改錯誤連結後保留欄位說明');
+await page.check('#gate-source');
+await page.click('#opsf button[type=submit]');
+await page.waitForFunction(() => document.querySelector('#ops-result')?.textContent.includes('已儲存'));
+await page.reload(); await page.waitForSelector('#opsf');
+ok((await page.inputValue('#o-goal')).includes('活動邀約') && await page.isChecked('#gate-source'), '運營目標與人工檢查重新整理仍保留');
+ok(await page.locator('#o-evidence').inputValue() === '<img src=x onerror="alert(1)">｜團隊帳號待核對' && await page.locator('img[src=x]').count() === 0, '來源文字安全呈現，不會變成可執行 HTML');
+const opsDownload = page.waitForEvent('download');
+await page.click('[data-act=playbook]');
+const handoff = readFileSync(await (await opsDownload).path(), 'utf8');
+ok(handoff.includes('新歌曝光、粉絲成長與活動邀約') && handoff.includes('[x] 來源') && !handoff.includes('aiKey'), '可下載已保存的手冊與人工檢查，沒有金鑰欄位');
+for (const task of ['brand', 'clips', 'line', 'agent']) {
+  await go('#operations');
+  await page.click(`[data-act=ops-task][data-v=${task}]`);
+  await page.waitForSelector('#st-in');
+  const result = await page.evaluate(async (task) => window.Backend.call('/api/prompt', { method: 'POST', body: { task, input: '測試工作單' } }), task);
+  ok(result.prompt.includes('新歌曝光、粉絲成長與活動邀約') && result.prompt.includes('不把建議寫成事實') && result.prompt.includes('測試工作單'), `${task} 工作單帶入品牌與查證規則，免金鑰可用`);
+}
+await go('#operations');
+const shots = process.env.SCREENSHOT_DIR || join(out, 'screenshots');
+mkdirSync(shots, { recursive: true });
+for (const width of [375, 1280]) for (const theme of ['light', 'dark']) {
+  await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
+  await page.emulateMedia({ colorScheme: theme });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width} ${theme} 運營頁沒有左右捲動`);
+  const smallTargets = await page.locator('#opsf button, .ops-actions button').evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().height < 48).length);
+  ok(smallTargets === 0, `${width} ${theme} 運營按鈕至少 48px`);
+  await page.screenshot({ path: join(shots, `operations-${width}-${theme}.png`), fullPage: true });
+}
+await page.setViewportSize({ width: 1280, height: 900 });
+await page.emulateMedia({ colorScheme: 'light' });
+
 // 活動
 await go('#events');
 await page.click('[data-act=newev]');
@@ -115,8 +169,14 @@ const ctx2 = await browser.newContext({ viewport: { width: 375, height: 812 } })
 const p2 = await ctx2.newPage();
 p2.on('pageerror', (e) => errors.push(String(e)));
 await p2.goto(URL0 + '#settings'); await p2.waitForTimeout(600);
+if (await p2.locator('#gate').count()) {
+  await p2.fill('#pw', 'test-only-password'); await p2.click('#gate button');
+  await p2.waitForSelector('#imp');
+}
 await p2.setInputFiles('#imp', file); await p2.waitForTimeout(900);
 ok((await p2.textContent('.brand b')) === '測試工作室', '另一個瀏覽器匯入備份後資料都在');
+await p2.goto(URL0 + '#operations'); await p2.waitForSelector('#o-goal');
+ok((await p2.inputValue('#o-goal')).includes('活動邀約'), '品牌手冊可隨備份搬家');
 await p2.goto(URL0 + '#content'); await p2.waitForTimeout(700);
 ok((await p2.evaluate(() => document.documentElement.scrollWidth)) <= 375, '手機 375 寬沒有左右捲動');
 const small = await p2.$$eval('.main button, .main a.btn, .main select, .main input:not([type=checkbox]):not([type=radio]):not(.sr)', (els) => els.filter((e) => e.offsetParent && e.getBoundingClientRect().height < 40).length);

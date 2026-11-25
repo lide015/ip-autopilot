@@ -198,3 +198,14 @@ select.status.s-done{color:var(--green)}
 .dlg p{margin:0 0 18px;color:var(--mute)}
 .toast{pointer-events:none}
 @media(prefers-reduced-motion:reduce){.progress i{transition:none}.skeleton i{animation:none}}
+
+/* 品牌作戰手冊：單欄填寫，手機保留完整按鈕與來源文字。 */
+#opsf{max-width:760px;margin-block:18px}
+.ops-checks,.ops-actions{display:flex;flex-wrap:wrap;gap:10px}
+.ops-checks .chip{min-height:48px;white-space:normal}
+.ops-actions .btn{flex:1 1 15rem;min-height:48px;white-space:normal}
+.ops-next{margin-block-start:18px}
+#opsf input:not([type=checkbox]),#opsf textarea{font-size:1rem;min-height:48px;border-color:var(--mute)}
+#opsf button{min-height:48px}
+#opsf label{overflow-wrap:anywhere}
+#opsf :is(input,textarea,button,summary,a):focus-visible,.ops-actions button:focus-visible{outline:3px solid var(--hl);outline-offset:3px}

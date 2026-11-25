@@ -32,6 +32,7 @@
 | `site-review` | 審查別人（或自己）的 PR |
 | `site-release` | 發佈新版本 |
 | `music-engine` | AI 音樂剪輯引擎（`engine/`）與雲端剪輯工作流 |
+| `music-operations` | 品牌證據、短影音、LINE 歌迷承接與活動邀約工作流 |
 
 ## 檔案地圖
 
