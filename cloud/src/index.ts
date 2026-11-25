@@ -338,7 +338,7 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
       .run();
     return json({ id });
   }
-  const itemMatch = path.match(/^\/api\/items\/([0-9a-f-]{36})$/);
+  const itemMatch = path.match(/^\/api\/items\/([A-Za-z0-9-]{1,64})$/);
   if (itemMatch) {
     const id = itemMatch[1];
     const row = await env.DB.prepare("SELECT * FROM items WHERE id = ?").bind(id).first<Row>();
@@ -402,10 +402,32 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
     }
   }
 
+  if (path === "/api/import" && method === "POST") {
+    const b = await body<{ app?: string; settings?: Partial<Settings>; items?: Record<string, unknown>[] }>();
+    if (b.app !== "ip-autopilot" || !Array.isArray(b.items)) return fail(400, "這不是本系統的備份檔");
+    if (b.settings && typeof b.settings === "object") {
+      const { aiKey: _ignored, ...rest } = b.settings as Record<string, unknown>;
+      await kvSet(env, "settings", JSON.stringify({ ...(await getSettings(env)), ...rest }));
+    }
+    const stmts: D1PreparedStatement[] = [];
+    for (const it of b.items.slice(0, 2000)) {
+      if (!it || !isKind(it.kind) || typeof it.id !== "string" || it.id.length > 64) continue;
+      const created = Number(it.createdAt) || Date.now();
+      const updated = Number(it.updatedAt) || created;
+      stmts.push(
+        env.DB.prepare(
+          "INSERT INTO items (id, kind, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at",
+        ).bind(it.id, it.kind, JSON.stringify(clean(it)), created, updated),
+      );
+    }
+    if (stmts.length) await env.DB.batch(stmts);
+    return json({ ok: true, count: stmts.length });
+  }
+
   if (path === "/api/export" && method === "GET") {
     const { results } = await env.DB.prepare("SELECT * FROM items ORDER BY created_at").all<Row>();
     return json(
-      { exportedAt: new Date().toISOString(), settings: await getSettings(env), items: results.map(toItem) },
+      { app: "ip-autopilot", version: 1, exportedAt: new Date().toISOString(), settings: await getSettings(env), items: results.map(toItem) },
       200,
       { "content-disposition": `attachment; filename="backup-${new Date().toISOString().slice(0, 10)}.json"` },
     );

@@ -1,0 +1,39 @@
+name: 新功能／改進
+description: 想讓網站多做到什麼事？寫下來，AI 會動手做並開 PR 給你審
+title: "[功能] "
+labels: [功能]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        保留下面「交給 AI」欄位裡的 **@claude**，送出後 AI 就會開始做（需要先完成 docs/AGENT-WORKFLOW.md 的設定）。
+        不想交給 AI，把 @claude 刪掉就好。
+  - type: textarea
+    id: who
+    attributes:
+      label: 誰會用到、在什麼情況下
+      placeholder: 例：我自己在手機上，每次活動結束後要整理照片
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 想要的結果
+      description: 用「我希望可以…」描述，不用想怎麼寫程式
+      placeholder: 例：我希望活動卡片可以上傳照片，並一鍵產生花絮貼文
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 怎樣算做好了
+      placeholder: |
+        例：
+        - 活動卡片有「上傳照片」
+        - 照片可以在手機上看
+        - AI 文案可以選「活動花絮」直接用這些照片的說明
+  - type: textarea
+    id: ai
+    attributes:
+      label: 交給 AI
+      value: "@claude 請依照這份需求，照 CLAUDE.md 與 site-feature 技能實作，測試通過後開 PR，並用繁中說明改了什麼。"

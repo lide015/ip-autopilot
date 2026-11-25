@@ -1,0 +1,31 @@
+name: 問題回報
+description: 哪裡壞掉或怪怪的？
+title: "[問題] "
+labels: [問題]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: 怎麼發生的
+      placeholder: |
+        1. 打開「內容看板」
+        2. 按「刪除」
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expect
+    attributes:
+      label: 本來應該怎樣、實際怎樣
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: 在哪裡用
+      options: [電腦（下載直接開）, 電腦（GitHub Pages 網址）, 手機, 雲端版]
+  - type: textarea
+    id: ai
+    attributes:
+      label: 交給 AI
+      value: "@claude 請重現並修好這個問題，補一條測試防止再發生，測試通過後開 PR。"
