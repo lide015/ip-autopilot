@@ -5,7 +5,8 @@
 ## 一定要遵守
 
 - 介面文字、說明文件、PR 說明、回覆留言一律用**白話繁體中文（台灣用語）**。程式碼註解也用繁中。
-- 網站與範例資料裡**不放任何真實個人的姓名、暱稱或細節**；範例一律用「範例工作室」「週三課堂」這類中性內容。
+- 使用者於 2026-11-25 明確要求將陳衣宸〈聖母媽祖〉專屬方案直接匯入 GitHub，授權的個案放在 `campaigns/chen-yichen-mazu/`，由同步腳本產生兩版內建運營包；這是專屬個案，不作通用範例。
+- 其餘網站與範例資料裡**不放任何真實個人的姓名、暱稱或細節**；範例一律用「範例工作室」「週三課堂」這類中性內容。
 - **兩個版本共用同一套畫面**：只改根目錄的 `app.js`、`app.css`，改完執行 `node scripts/sync-cloud.mjs`。絕對不要直接改 `cloud/public/app.js` 或 `cloud/public/app.css`。
 - 新增或修改資料操作時，**兩個 adapter 都要改**：`store.js`（本機版）與 `cloud/public/cloud-adapter.js`＋`cloud/src/index.ts`（雲端版），介面必須一致。
 - AI 提示詞（`TASKS`、`systemPrompt`、`buildPrompt`）在 `store.js` 與 `cloud/src/index.ts` 各有一份，**兩份要一起改、內容一致**。

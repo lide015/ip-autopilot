@@ -194,6 +194,45 @@ await page.click('dialog.dlg [value=yes]');
 await page.waitForTimeout(500);
 ok((await page.locator('.card').count()) === 0, '確認後才刪除');
 
+// 不下載檔案的一鍵套用：先確認，保留既有草稿與服務設定。
+await go('#operations');
+const pack = await page.evaluate(() => window.Campaigns[0]);
+let unexpectedDownloads = 0;
+page.on('download', () => unexpectedDownloads++);
+await page.fill('#o-goal', '尚未儲存的目標');
+await page.click('[data-act=apply-campaign]');
+ok(await page.locator('dialog.dlg [value=no]').evaluate((e) => e === document.activeElement), '套用確認預設聚焦取消');
+await page.keyboard.press('Escape');
+ok((await page.textContent('.brand b')) === '測試工作室' && (await page.inputValue('#o-goal')) === '尚未儲存的目標', '取消套用保留工作區與未儲存的輸入');
+await page.click('[data-act=apply-campaign]');
+await page.click('dialog.dlg [value=yes]');
+await page.waitForFunction(() => document.querySelector('#campaign-result')?.textContent.includes('已套用'));
+const firstApply = await page.evaluate(() => window.Backend.exportData());
+ok(firstApply.settings.brand === pack.data.settings.brand && firstApply.items.filter((x) => x.kind === 'content').length === pack.data.items.length, '一鍵套用品牌與完整草稿，不用選擇檔案');
+await page.evaluate(async (id) => window.Backend.call('/api/items/' + id, { method: 'PATCH', body: { title: '自己改過的草稿' } }), pack.data.items[0].id);
+await page.click('[data-act=apply-campaign]');
+await page.click('dialog.dlg [value=yes]');
+await page.waitForFunction(() => document.querySelector('#campaign-result')?.textContent.includes('已套用'));
+const secondApply = await page.evaluate(() => window.Backend.exportData());
+ok(secondApply.items.find((x) => x.id === pack.data.items[0].id)?.title === '自己改過的草稿' && secondApply.items.length === firstApply.items.length, '重複套用保留草稿修改，不會重複建立卡片');
+ok(secondApply.settings.engineRepo === 'my-account/ip-autopilot' && unexpectedDownloads === 0, '一鍵套用保留引擎設定，全程不觸發下載');
+if (!process.env.APP_URL) {
+  const fresh = await browser.newContext();
+  const p3 = await fresh.newPage();
+  const link = new URL(URL0); link.searchParams.set('campaign', pack.id); link.hash = 'operations';
+  await p3.goto(link.href); await p3.waitForSelector('#o-goal');
+  ok((await p3.textContent('.brand b')) === pack.data.settings.brand, '專屬網址會自動初始化空白工作區');
+  await p3.evaluate(async () => window.Backend.call('/api/settings', { method: 'PUT', body: { brand: '我自行修改的品牌' } }));
+  await p3.reload(); await p3.waitForSelector('#o-goal');
+  ok((await p3.textContent('.brand b')) === '我自行修改的品牌', '重開專屬網址不會覆蓋已修改的工作區');
+  await fresh.close();
+}
+for (const width of [375, 1280]) for (const theme of ['light', 'dark']) {
+  await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
+  await page.emulateMedia({ colorScheme: theme });
+  ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width} ${theme} 內建運營包沒有左右溢出`);
+}
+
 ok(errors.length === 0, `沒有程式錯誤${errors.length ? '：' + errors.join(' | ') : ''}`);
 await browser.close();
 console.log(failed ? `\n${failed} 項失敗` : '\n全部通過');

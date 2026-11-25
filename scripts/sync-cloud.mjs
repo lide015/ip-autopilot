@@ -6,11 +6,29 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const files = ['app.js', 'app.css'];
+// 個案配置由同一份資料產生兩版腳本，雙擊本機檔案也能套用，不依賴網路讀檔。
+const catalog = JSON.parse(readFileSync(join(root, 'campaigns', 'catalog.json'), 'utf8'));
+const campaigns = catalog.map(({ id, name }) => {
+  if (!/^[a-z0-9-]+$/.test(id)) throw new Error('運營包代號格式不對');
+  const data = JSON.parse(readFileSync(join(root, 'campaigns', id, 'profile.json'), 'utf8'));
+  if (data.app !== 'ip-autopilot' || !Array.isArray(data.items) || !data.settings || 'aiKey' in data.settings) throw new Error('運營包格式不對或含有金鑰欄位');
+  return { id, name, data };
+});
+const bundled = '// 由 scripts/sync-cloud.mjs 產生，請修改 campaigns/ 的來源資料。\nwindow.Campaigns = ' + JSON.stringify(campaigns, null, 2) + ';\n';
+const files = ['app.js', 'app.css', 'campaigns.js'];
 const check = process.argv.includes('--check');
 let drift = 0;
 for (const f of files) {
-  const src = readFileSync(join(root, f), 'utf8');
+  const src = f === 'campaigns.js' ? bundled : readFileSync(join(root, f), 'utf8');
+  if (f === 'campaigns.js') {
+    let local = '';
+    try { local = readFileSync(join(root, f), 'utf8'); } catch { /* 第一次產生 */ }
+    if (local !== src) {
+      drift++;
+      if (check) console.error('✗ campaigns.js 與來源不同，請執行 node scripts/sync-cloud.mjs');
+      else writeFileSync(join(root, f), src);
+    }
+  }
   const dst = join(root, 'cloud', 'public', f);
   let cur = '';
   try { cur = readFileSync(dst, 'utf8'); } catch { /* 第一次同步 */ }

@@ -94,16 +94,14 @@ function confirmBox({ title, body, ok }) {
     const d = document.createElement('dialog');
     d.className = 'dlg';
     d.setAttribute('aria-labelledby', 'dlg-t');
-    d.innerHTML = `<h2 id="dlg-t"></h2><p></p><div class="row end"><button class="btn ghost" value="no">取消</button><button class="btn danger" value="yes"></button></div>`;
-    d.querySelector('h2').textContent = title;
+    d.innerHTML = `<h1 id="dlg-t"></h1><p></p><form method="dialog" class="row end"><button class="btn ghost" value="no" autofocus>取消</button><button class="btn danger" value="yes"></button></form>`;
+    d.querySelector('h1').textContent = title;
     d.querySelector('p').textContent = body;
     d.querySelector('.danger').textContent = ok;
-    const done = (v) => { d.close(); d.remove(); resolve(v); };
-    d.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) done(b.value === 'yes'); else if (e.target === d) done(false); });
-    d.addEventListener('cancel', (e) => { e.preventDefault(); done(false); });
+    d.addEventListener('submit', (e) => e.stopPropagation());
+    d.addEventListener('close', () => { const yes = d.returnValue === 'yes'; d.returnValue = ''; d.remove(); resolve(yes); }, { once: true });
     document.body.appendChild(d);
     d.showModal();
-    d.querySelector('[value=no]').focus();
   });
 }
 // 欄位旁的錯誤訊息：送出時檢查，使用者一改就消失
@@ -266,11 +264,45 @@ function playbookText() {
     '\n\n## 本週人工檢查\n' + GATES.map(([k, l]) => `- [${(s.flowChecks || '').split('|').includes(k) ? 'x' : ' '}] ${l}`).join('\n') +
     '\n\n## 工作路徑\n研究核對 → 授權素材 → 剪輯與文案 → 人工審核 → 平台發布／LINE 承接 → 成效回顧。\n這是作戰手冊與工作單；尚未連接 LINE、自動發訊息或自動執行 Agent。\n';
 }
+function campaignPanel() {
+  const packs = Array.isArray(window.Campaigns) ? window.Campaigns : [];
+  if (!packs.length) return '';
+  return `<section class="panel onboard"><h2>內建運營包</h2><p class="muted">直接套用已放在 GitHub 的配置，不必下載或選擇檔案。會更新品牌資料，已有的草稿卡保留。</p><div class="ops-actions">${packs.map((pack) => `<button type="button" class="btn ghost" data-act="apply-campaign" data-v="${esc(pack.id)}" ${S.campaignBusy ? 'disabled' : ''}>${S.campaignBusy === pack.id ? '正在套用…' : '套用' + esc(pack.name)}</button>`).join('')}</div><p id="campaign-result" role="status"></p></section>`;
+}
+async function applyCampaign(id) {
+  if (S.campaignBusy) return;
+  const pack = window.Campaigns?.find((x) => x.id === id);
+  if (!pack) return;
+  S.campaignBusy = id;
+  let message = '', started = false;
+  try {
+    const yes = await confirmBox({ title: `套用${pack.name}？`, body: '將更新指定的品牌欄位，上方尚未儲存的修改也會被取代。其他 AI、金鑰與引擎設定保留；已存在的同一張草稿卡保留你的修改，不會重複新增。這不會發文或發訊息。', ok: '套用運營包' });
+    if (!yes) return;
+    started = true;
+    if (S.view === 'operations') draw();
+    await load();
+    const existing = new Set(S.items.map((x) => x.id));
+    const data = { ...pack.data, items: pack.data.items.filter((x) => !existing.has(x.id)) };
+    const count = await B.importData(data);
+    await Promise.all([load(), loadSettings()]);
+    message = `已套用${pack.name}，新增 ${count} 張草稿卡；既有草稿卡保留。`;
+  } catch (err) { message = '套用未完成，請重試：' + err.message; }
+  finally {
+    S.campaignBusy = '';
+    if (started && S.view === 'operations') {
+      draw();
+      const result = $('#campaign-result');
+      if (result) result.textContent = message;
+      document.querySelector('[data-act="apply-campaign"]')?.focus({ preventScroll: true });
+    } else if (message) toast(message);
+  }
+}
 function vOperations() {
   const s = S.settings || {}, done = PLAYBOOK.filter(([k]) => String(s[k] || '').trim()).length;
   const line = officialLine(s.lineUrl), checks = (s.flowChecks || '').split('|');
   const area = ([k, l, ph]) => `<div class="f"><label for="o-${k}">${l}</label><textarea id="o-${k}" name="${k}" maxlength="2000" rows="3" placeholder="${esc(ph)}">${esc(s[k] || '')}</textarea></div>`;
   return `<div class="top"><div><h1 tabindex="-1">品牌與運營</h1><p class="sub">讓新歌被聽見，讓歌迷留下來，也讓活動邀約找到你。</p></div><button type="button" class="btn ghost" data-act="playbook">下載已儲存的手冊</button></div>
+  ${campaignPanel()}
   <section class="panel onboard"><h2>先有依據，再開始製作</h2><p>已填 ${done}/${PLAYBOOK.length} 項。填寫進度不代表資料已驗證；經歷、帳號用途與授權請逐項核對。</p><p class="muted">個人檔案與團隊帳號分開記錄。聲音特質要有試聽時間碼，受眾先當假設，以結果驗證。</p></section>
   <form id="opsf" class="form" aria-labelledby="ops-title" novalidate>
     <h2 id="ops-title">品牌作戰手冊</h2>
@@ -411,6 +443,7 @@ document.addEventListener('click', async (e) => {
   const a = b.dataset.act;
   if (a === 'filter') { S.filter = b.dataset.v; if (location.hash !== '#content') return; e.preventDefault(); draw(); return; }
   e.preventDefault();
+  if (a === 'apply-campaign') return applyCampaign(b.dataset.v);
   if (a === 'playbook') return download(`品牌作戰手冊-${today()}.md`, playbookText());
   if (a === 'ops-task') { S.studio = { task: b.dataset.v, input: '請依已儲存的品牌作戰手冊整理；缺資料請列待補。', out: [], busy: false, cid: '' }; location.hash = '#studio'; return; }
   if (a === 'logout') { await api('/api/logout', { method: 'POST', quiet: true }).catch(() => {}); S.authed = false; draw(); return; }
@@ -492,13 +525,23 @@ async function saveSettings() {
 }
 
 // ===== 啟動 =====
+async function applyFreshCampaignLink() {
+  const id = new URL(location.href).searchParams.get('campaign');
+  const pack = window.Campaigns?.find((x) => x.id === id);
+  // 專屬連結只初始化空白工作區；既有工作區必須由本人按鈕確認套用。
+  if (!pack || S.items.length || S.settings?.hasKey) return;
+  const defaults = { brand: '我的品牌', intro: '', fields: '', audience: '', tone: '熱情、親切、專業，不浮誇', avoid: '', accent: '#c8102e', platforms: ['TikTok', 'YouTube', 'Facebook', 'Instagram', 'LINE'] };
+  if (Object.keys(pack.data.settings).some((key) => JSON.stringify(S.settings?.[key] ?? '') !== JSON.stringify(defaults[key] ?? ''))) return;
+  await B.importData(pack.data);
+  await Promise.all([load(), loadSettings()]);
+}
 (async () => {
   draw();
   try {
     const st = await api('/api/state', { quiet: true });
     S.setup = st.setup; S.authed = st.authed;
     if (/^#[0-9a-fA-F]{6}$/.test(st.accent || '')) document.documentElement.style.setProperty('--brand', st.accent);
-    if (S.authed) await Promise.all([load(), loadSettings()]);
+    if (S.authed) { await Promise.all([load(), loadSettings()]); await applyFreshCampaignLink(); }
   } catch (e) { toast('讀取資料失敗，請重新整理'); }
   S.boot = true; route();
 })();

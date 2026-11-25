@@ -6,7 +6,7 @@
   "description": "個人IP運營中控台（下載即用版＋雲端版）",
   "scripts": {
     "sync": "node scripts/sync-cloud.mjs",
-    "check": "node scripts/sync-cloud.mjs --check && node --check app.js && node --check store.js && node --check cloud/public/cloud-adapter.js",
+    "check": "node scripts/sync-cloud.mjs --check && node --check app.js && node --check store.js && node --check campaigns.js && node --check cloud/public/cloud-adapter.js",
     "test": "npm run check && node tests/smoke.mjs"
   },
   "devDependencies": {
