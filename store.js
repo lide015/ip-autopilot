@@ -1,8 +1,10 @@
 /*
- * 本機版資料層：所有資料、影片、設定都存在這個瀏覽器的 IndexedDB。
- * 提供與雲端版相同的 API 路徑，讓同一套畫面兩個版本都能用。
+ * 本機版後端（Backend adapter）：資料、影片、設定都存在這個瀏覽器的 IndexedDB。
+ * 介面與 cloud/public/cloud-adapter.js 完全相同，app.js 不需要知道自己跑在哪個版本。
+ * 介面：features、call(path, opt)、putMedia(file, onProgress)、mediaUrl(key)、
+ *       downloadMedia(key, name)、exportData()、importData(data)、usage()
  */
-window.LocalAPI = (() => {
+window.Backend = (() => {
   const DEFAULT_SETTINGS = {
     brand: '我的品牌', intro: '', fields: '', audience: '', tone: '熱情、親切、專業，不浮誇', avoid: '',
     accent: '#c8102e', platforms: ['TikTok', 'YouTube', 'Facebook', 'Instagram', 'LINE'],
@@ -174,14 +176,31 @@ window.LocalAPI = (() => {
   }
 
   // ---------- 影片與備份 ----------
-  async function putMedia(file) {
+  const urls = new Map();
+  async function putMedia(file, onProgress) {
     try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) { /* 不支援就略過 */ }
     const ext = (file.name.split('.').pop() || 'mp4').replace(/[^a-z0-9]/gi, '').slice(0, 5) || 'mp4';
     const key = `media/${uuid()}.${ext}`;
     await put('media', file, key);
+    if (onProgress) onProgress(100);
     return key;
   }
-  const getMedia = (key) => get('media', key);
+  async function mediaUrl(key) {
+    if (urls.has(key)) return urls.get(key);
+    const blob = await get('media', key).catch(() => null);
+    if (!blob) return null;
+    const u = URL.createObjectURL(blob);
+    urls.set(key, u);
+    return u;
+  }
+  async function downloadMedia(key, name) {
+    const blob = await get('media', key);
+    if (!blob) throw new Error('這台裝置上找不到影片檔');
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = u; a.download = `${name || 'video'}.${key.split('.').pop()}`; a.click();
+    setTimeout(() => URL.revokeObjectURL(u), 5000);
+  }
   async function exportData() { return { app: 'ip-autopilot', version: 1, exportedAt: new Date().toISOString(), settings: await settings(), items: await all('items') }; }
   async function importData(data) {
     if (!data || data.app !== 'ip-autopilot' || !Array.isArray(data.items)) throw new Error('這不是本系統的備份檔');
@@ -191,5 +210,6 @@ window.LocalAPI = (() => {
     return n;
   }
   async function usage() { try { const e = await navigator.storage.estimate(); return { used: e.usage || 0, quota: e.quota || 0 }; } catch (e) { return null; } }
-  return { call, putMedia, getMedia, exportData, importData, usage };
+  const features = { login: false, local: true, uploadMax: 1024 * 1024 * 1024, uploadNote: '影片會存在這個瀏覽器裡（1 GB 以內）', keyNote: '金鑰只存在這台裝置的瀏覽器裡，AI 請求直接從這裡送到 AI 服務。請不要在公用電腦存金鑰。' };
+  return { features, call, putMedia, mediaUrl, downloadMedia, exportData, importData, usage };
 })();

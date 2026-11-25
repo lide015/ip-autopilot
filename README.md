@@ -26,6 +26,7 @@ A 和 B 的資料都存在「打開它的那個瀏覽器」裡，只有你看得
 | 發布包 | 下載影片、複製文案、一鍵開啟 TikTok Studio、YouTube Studio、Meta 商務套件 |
 | 活動檔期 | 貼上跟客戶的對話，AI 整理成檔期、流程與確認訊息；每場活動六步檢查 |
 | 範本庫 | 招生、花絮、成果分享、預告、節日問候、活動確認、前一天提醒、活動後感謝、婉拒撞期 |
+| 搜尋與拖放 | 內容看板即時搜尋；影片直接拖進上傳區，送出前可預覽 |
 | 設定 | 品牌名稱與顏色、介紹、受眾、語氣、禁用字、平台、AI 服務與金鑰、備份與匯入 |
 
 手機、平板、電腦都能用。品牌顏色一換，整個網站跟著變色。
@@ -54,12 +55,30 @@ A 和 B 的資料都存在「打開它的那個瀏覽器」裡，只有你看得
 - AI 只寫稿，發出去之前一定要有人看過。
 - 翻唱或使用別人的音樂，可能被平台版權系統偵測。
 
+## 讓 AI 幫你養網站
+
+想加功能或修問題，不用自己寫程式：在 GitHub 用「新功能」或「問題回報」表單開一則需求，保留 **@claude**，AI 就會照專案規則實作、跑測試、開 PR 給你審，你按合併就完成。
+一次性設定與使用方式見 [docs/AGENT-WORKFLOW.md](docs/AGENT-WORKFLOW.md)；架構說明見 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)；更新紀錄見 [CHANGELOG.md](CHANGELOG.md)。
+
 ## 檔案說明
 
 ```
-index.html   網站入口
-app.css      外觀
-app.js       畫面與操作
-store.js     本機資料、AI、字幕（存在瀏覽器 IndexedDB）
-cloud/       雲端版（Cloudflare Workers + D1 + R2，密碼登入、多裝置同步）
+index.html          網站入口
+app.js / app.css    畫面與外觀（兩個版本共用）
+store.js            下載即用版的資料層（存在瀏覽器 IndexedDB）
+cloud/              雲端版（Cloudflare Workers + D1 + R2，密碼登入、多裝置同步）
+CLAUDE.md           給 AI 的專案規則
+.claude/skills/     給 AI 的技能庫（功能開發、介面、提示詞、測試、審查、發佈）
+.github/            @claude 工作流、自動檢查、需求表單
+docs/               架構與 agent 工作流說明
+tests/              瀏覽器全流程測試（npm test）
+```
+
+## 開發者
+
+```bash
+npm install
+npx playwright install chromium   # 或設定 CHROME_PATH 指向已安裝的 Chrome
+npm test                          # 同步檢查＋語法檢查＋24 項瀏覽器測試
+node scripts/sync-cloud.mjs       # 改了 app.js／app.css 後同步到雲端版
 ```
