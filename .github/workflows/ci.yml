@@ -13,12 +13,18 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - name: 準備瀏覽器（優先用 GitHub 內建的 Chrome，不必另外下載）
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+          fi
       - run: npm test
 
   cloud:
@@ -30,7 +36,7 @@ jobs:
         working-directory: cloud
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
       - run: npm ci
@@ -46,7 +52,7 @@ jobs:
       - run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg fonts-noto-cjk > /dev/null
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip

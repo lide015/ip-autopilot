@@ -37,10 +37,17 @@ jobs:
           fetch-depth: 1
 
       # 先把測試工具裝好，AI 改完可以自己跑 npm test
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
-      - run: npm ci && npx playwright install --with-deps chromium
+      - run: npm ci
+      - name: 準備瀏覽器（優先用 GitHub 內建的 Chrome，不必另外下載）
+        run: |
+          if command -v google-chrome >/dev/null; then
+            echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+          fi
       - run: cd cloud && npm ci
 
       - uses: anthropics/claude-code-action@v1
