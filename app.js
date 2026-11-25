@@ -27,6 +27,7 @@ const TASKS = [
   ['sales', '招生或銷售文案', '課程或商品、時間、報名方式'],
   ['reply', '難回訊息的高情商回覆', '貼上對方的訊息，再說你想怎麼處理（例如：想婉拒、想守住價格）'],
   ['script', '主持或直播串場稿', '活動類型、流程'],
+  ['promo', '新歌／演出宣傳', '歌名、發行或演出的日期地點、想強調的亮點'],
   ['week', '本週內容包', '這週發生的事、想推的主題'],
 ];
 const TPL = [
@@ -64,6 +65,14 @@ const ago = (ts) => { if (!ts) return ''; const m = Math.round((Date.now() - ts)
 const mb = (n) => (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + ' MB';
 const by = (a, f, dir = 1) => [...a].sort((x, y) => ((x[f] ?? '') > (y[f] ?? '') ? 1 : (x[f] ?? '') < (y[f] ?? '') ? -1 : 0) * dir);
 const safeUrl = (u) => (/^https:\/\//.test(u || '') ? u : '');
+// 「AI 音樂剪輯」：開啟剪輯引擎倉庫的需求表單，預先填好歌名與影片連結
+const editUrl = (x) => {
+  const repo = S.settings?.engineRepo;
+  if (!repo || !/^[\w.-]+\/[\w.-]+$/.test(repo)) return '';
+  const q = new URLSearchParams({ template: 'edit.yml', title: '[剪輯] ' + (x.title || ''), song: x.title || '' });
+  if (safeUrl(x.link)) q.set('video', x.link);
+  return `https://github.com/${repo}/issues/new?${q.toString()}`;
+};
 const toast = (t) => { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (el.hidden = true), 3600); };
 
 async function api(path, opt = {}) {
@@ -176,7 +185,7 @@ function card(x) {
   <fieldset class="bare"><legend>要發的平台</legend><div class="row" data-plats="${id}">${plats().map((p) => `<label class="chip"><input type="checkbox" value="${esc(p)}" ${xp.includes(p) ? 'checked' : ''}>${esc(p)}</label>`).join('')}</div></fieldset>
   <details><summary>文案${x.captions ? '<span class="tag s-done">已寫好</span>' : '<span class="tag">還沒寫</span>'}</summary><label class="sr" for="cap-${id}">文案</label><textarea id="cap-${id}" rows="7" data-id="${id}" data-f="captions" data-note="文案已儲存" placeholder="AI 寫好的文案會放這裡，也可以直接修改">${esc(x.captions || '')}</textarea><div class="row"><button class="btn sm ghost" data-act="copyta">複製文案</button></div></details>
   ${key ? `<details><summary>字幕檔（SRT）${x.srt ? '<span class="tag s-done">已產生</span>' : ''}</summary>${x.srt ? `<label class="sr" for="srt-${id}">字幕</label><textarea id="srt-${id}" rows="6" data-id="${id}" data-f="srt" data-note="字幕已儲存">${esc(x.srt)}</textarea><div class="row"><button class="btn sm ghost" data-act="copyta">複製字幕</button><button class="btn sm ghost" data-act="dlsrt" data-id="${id}">下載 .srt</button></div>` : `<p class="muted">用 AI 把影片的話轉成字幕檔，可匯入 CapCut 或上傳到 YouTube。</p><button class="btn sm ghost" data-act="srt" data-id="${id}">產生字幕</button>`}</details>` : ''}
-  <details><summary>發布包</summary><ol class="steps-mini"><li>下載影片</li><li>複製文案</li><li>開平台上傳、設時間</li><li>回來把狀態改成「已排程」或「已發布」</li></ol><div class="pub">${key ? `<button class="btn sm ghost" data-act="dlvid" data-k="${esc(key)}" data-n="${esc(x.title)}">下載影片</button>` : ''}${(xp.length ? xp : plats()).filter((p) => PUB[p]).map((p) => `<a class="btn sm ghost" href="${PUB[p]}" target="_blank" rel="noopener">開啟 ${esc(p)}</a>`).join('')}</div></details>
+  <details><summary>發布包</summary><ol class="steps-mini"><li>下載影片</li><li>複製文案</li><li>開平台上傳、設時間</li><li>回來把狀態改成「已排程」或「已發布」</li></ol><p class="muted">想要副歌版、歌詞版、卡點版三支短影音？${editUrl(x) ? `<a href="${esc(editUrl(x))}" target="_blank" rel="noopener">交給 AI 音樂剪輯</a>` : '<a href="#settings">先到設定填「AI 剪輯引擎」</a>'}</p><div class="pub">${key ? `<button class="btn sm ghost" data-act="dlvid" data-k="${esc(key)}" data-n="${esc(x.title)}">下載影片</button>` : ''}${(xp.length ? xp : plats()).filter((p) => PUB[p]).map((p) => `<a class="btn sm ghost" href="${PUB[p]}" target="_blank" rel="noopener">開啟 ${esc(p)}</a>`).join('')}</div></details>
   <div class="row split"><button class="btn sm" data-act="ai" data-id="${id}">${svg('studio')}AI 寫文案</button><button class="btn sm quiet" data-act="del" data-id="${id}">刪除</button></div>
   <p class="muted meta">更新於 ${ago(x.updatedAt)}</p></div></article>`;
 }
@@ -247,7 +256,7 @@ function vSettings() {
   <div class="row" role="radiogroup" aria-label="AI 服務"><label class="chip"><input type="radio" name="s-prov" value="anthropic" ${s.aiProvider !== 'openai' ? 'checked' : ''}>Claude（Anthropic）</label><label class="chip"><input type="radio" name="s-prov" value="openai" ${s.aiProvider === 'openai' ? 'checked' : ''}>OpenAI 相容服務</label></div>
   <div class="g2"><label class="f">模型名稱<input type="text" id="s-model" value="${esc(s.aiModel || '')}" placeholder="例：claude-sonnet-5-5"></label><label class="f">服務網址（可不填）<input type="url" id="s-base" value="${esc(s.aiBaseUrl || '')}" placeholder="例：https://.../v1"></label></div>
   <label class="f">API 金鑰<input type="password" id="s-key" autocomplete="off" placeholder="${s.hasKey ? '已設定（尾碼 ' + esc(s.keyTail) + '），要換才填' : '貼上你的 API 金鑰'}"></label>
-  <div class="g2"><label class="f">字幕模型（OpenAI 相容才有）<input type="text" id="s-stt" value="${esc(s.sttModel || 'whisper-1')}"></label></div>
+  <div class="g2"><label class="f">字幕模型（OpenAI 相容才有）<input type="text" id="s-stt" value="${esc(s.sttModel || 'whisper-1')}"></label><label class="f">AI 剪輯引擎（GitHub 帳號/倉庫名）<input type="text" id="s-engine" value="${esc(s.engineRepo || '')}" placeholder="例：my-account/ip-autopilot" autocapitalize="off" spellcheck="false"></label></div>
   ${s.hasKey ? '<label class="chip self"><input type="checkbox" id="s-clear">刪除已存的金鑰</label>' : ''}</fieldset>
   <div class="row"><button class="btn">儲存設定</button></div></form>
   ${B.features.login ? `<form class="form panel" id="pwf" novalidate><h2>更改密碼</h2><div class="g2"><label class="f">目前密碼<input type="password" id="p-cur" autocomplete="current-password"></label><label class="f">新密碼（至少 8 個字）<input type="password" id="p-new" autocomplete="new-password"></label></div><div class="row"><button class="btn ghost">更改密碼</button></div></form>` : ''}
@@ -415,9 +424,10 @@ async function evai() {
 }
 async function saveSettings() {
   const v = (id) => $('#' + id).value;
-  const base = $('#s-base');
+  const base = $('#s-base'), eng = $('#s-engine');
   if (base.value.trim() && !safeUrl(base.value.trim())) { fieldError(base, '服務網址要用 https:// 開頭'); base.focus(); return; }
-  const body = { brand: v('s-brand').trim() || '我的品牌', accent: v('s-accent'), intro: v('s-intro'), fields: v('s-fields'), audience: v('s-audience'), tone: v('s-tone'), avoid: v('s-avoid'), platforms: [...document.querySelectorAll('[name=s-pl]:checked')].map((i) => i.value), aiProvider: document.querySelector('[name=s-prov]:checked').value, aiModel: v('s-model').trim(), aiBaseUrl: base.value.trim(), sttModel: v('s-stt').trim() };
+  if (eng.value.trim() && !/^[\w.-]+\/[\w.-]+$/.test(eng.value.trim())) { fieldError(eng, '請寫成「帳號/倉庫名」，例如 my-account/ip-autopilot'); eng.focus(); return; }
+  const body = { brand: v('s-brand').trim() || '我的品牌', accent: v('s-accent'), intro: v('s-intro'), fields: v('s-fields'), audience: v('s-audience'), tone: v('s-tone'), avoid: v('s-avoid'), platforms: [...document.querySelectorAll('[name=s-pl]:checked')].map((i) => i.value), aiProvider: document.querySelector('[name=s-prov]:checked').value, aiModel: v('s-model').trim(), aiBaseUrl: base.value.trim(), sttModel: v('s-stt').trim(), engineRepo: eng.value.trim() };
   const key = v('s-key').trim();
   if (key) body.aiKey = key;
   if ($('#s-clear')?.checked) body.aiKey = '';

@@ -8,7 +8,7 @@ description: 驗證個人IP運營中控台的改動：自動測試、雲端版�
 ## 自動測試（一定要跑）
 ```bash
 npm install                                  # 第一次
-npx playwright install chromium              # 第一次，或用 CHROME_PATH 指向已安裝的 Chrome
+CHROME_PATH=$(command -v google-chrome)     # 有裝 Chrome 就直接用；沒有才 npx playwright install chromium
 npm test                                     # 同步檢查＋語法檢查＋瀏覽器全流程
 ```
 `tests/smoke.mjs` 用真的瀏覽器打開 `index.html`，走過：設定、欄位錯誤、上傳與播放、改狀態、搜尋、活動與六步檢查、備份匯出匯入、手機寬度與按鈕大小、刪除確認。任何一項 ✗ 都不能交付。

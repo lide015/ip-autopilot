@@ -68,6 +68,19 @@ if (realVideo) {
   ok(dur > 1, `影片播得出來（${dur} 秒）`);
 }
 
+// AI 音樂剪輯：沒設定引擎時引導去設定；設定後連到預填好的 GitHub 表單
+ok((await page.textContent('.card')).includes('先到設定填「AI 剪輯引擎」'), '沒設定剪輯引擎時會引導去設定');
+await go('#settings');
+await page.fill('#s-engine', '不合法');
+await page.click('#setf button.btn');
+ok(await page.isVisible('#s-engine-err'), '剪輯引擎格式錯誤會在欄位旁提示');
+await page.fill('#s-engine', 'my-account/ip-autopilot');
+await page.click('#setf button.btn');
+await page.waitForTimeout(400);
+await go('#content');
+const editHref = await page.getAttribute('.card a[href*="issues/new"]', 'href');
+ok(!!editHref && editHref.startsWith('https://github.com/my-account/ip-autopilot/issues/new?template=edit.yml') && editHref.includes('song='), '影片卡可以一鍵交給 AI 音樂剪輯（預填歌名）');
+
 // 狀態、搜尋
 await page.selectOption('select.status', '待審核');
 await page.waitForTimeout(400);

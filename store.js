@@ -8,7 +8,7 @@ window.Backend = (() => {
   const DEFAULT_SETTINGS = {
     brand: '我的品牌', intro: '', fields: '', audience: '', tone: '熱情、親切、專業，不浮誇', avoid: '',
     accent: '#c8102e', platforms: ['TikTok', 'YouTube', 'Facebook', 'Instagram', 'LINE'],
-    aiProvider: 'anthropic', aiModel: 'claude-sonnet-5-5', aiBaseUrl: '', sttModel: 'whisper-1',
+    aiProvider: 'anthropic', aiModel: 'claude-sonnet-5-5', aiBaseUrl: '', sttModel: 'whisper-1', engineRepo: '',
   };
   const MAX_STT = 25 * 1024 * 1024;
 
@@ -55,6 +55,7 @@ window.Backend = (() => {
     sales: ['招生或銷售文案', '輸出 2 項：完整貼文、可轉傳的短版。'],
     reply: ['難回訊息的高情商回覆', '輸出 3 個版本：溫和婉轉、折衷提案、堅守立場。每個都給對方台階與面子，但不失專業與底線。標籤寫出各自適合的情況。'],
     script: ['主持或直播串場稿', '依流程分段輸出，每段一項，口語、好念。'],
+    promo: ['新歌／演出宣傳', '輸出 4 項：IG 貼文（150 字內，結尾一個行動呼籲＋5 個 hashtag）、IG 限時動態短句（3 句，每句 15 字內）、TikTok／YouTube Shorts 說明（封面字 12 字內＋一句說明＋5 個 hashtag）、LINE 群組提醒（80 字內）。缺少日期、地點、票價等資訊時用【待填：項目】。'],
     week: ['本週內容包', '輸出 7 項：3 篇社群貼文、3 支短影音（封面字＋說明＋hashtag）、1 則群組通知。主題平均分配在專業實力、教學或知識分享、幕後與生活。'],
   };
   const OUTPUT = '只回傳 JSON，不要其他文字，格式：{"items":[{"label":"項目名稱","text":"可直接複製的完整內容"}]}';
@@ -139,6 +140,7 @@ window.Backend = (() => {
       for (const k of Object.keys(DEFAULT_SETTINGS)) if (b[k] !== undefined) next[k] = k === 'platforms' ? (Array.isArray(b[k]) ? b[k].map(String) : cur[k]) : String(b[k]).slice(0, 2000);
       if (next.aiProvider !== 'openai') next.aiProvider = 'anthropic';
       if (next.aiBaseUrl && !/^https:\/\//.test(next.aiBaseUrl)) throw new Error('AI 服務網址要用 https:// 開頭');
+      if (next.engineRepo && !/^[\w.-]+\/[\w.-]+$/.test(next.engineRepo)) throw new Error('剪輯引擎要寫成「帳號/倉庫名」');
       if (!/^#[0-9a-fA-F]{6}$/.test(next.accent)) next.accent = DEFAULT_SETTINGS.accent;
       await put('kv', next, 'settings');
       if (typeof b.aiKey === 'string') { if (b.aiKey === '') await del('kv', 'ai_key'); else await put('kv', b.aiKey.trim(), 'ai_key'); }

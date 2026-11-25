@@ -1,0 +1,60 @@
+name: AI 音樂剪輯
+description: 丟一支影片，自動做出副歌版、歌詞意境版、預告卡點版三支短影音＋宣傳文案
+title: "[剪輯] "
+labels: [剪輯任務]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        送出後 GitHub 會開一台雲端電腦幫你剪，**完成後成品連結會自動留言在這裡**（通常幾分鐘）。
+        要調整就留言，例如「重跑，從 1:20 開始，換成 Live」。
+  - type: input
+    id: video
+    attributes:
+      label: 影片連結
+      description: Google 雲端硬碟或 Dropbox 的分享連結（權限設成「知道連結的人都能查看」）。手機正面拍、有聲音的影片即可。
+      placeholder: https://drive.google.com/file/d/...
+    validations:
+      required: true
+  - type: input
+    id: song
+    attributes:
+      label: 歌名或作品名稱
+      placeholder: 例：夜裡的歌
+  - type: textarea
+    id: lyrics
+    attributes:
+      label: 副歌歌詞（每行一句）
+      description: 只要貼副歌那幾行。系統會依歌聲出現的時間自動對位；不貼就不放歌詞。
+  - type: input
+    id: info
+    attributes:
+      label: 發行或演出資訊
+      placeholder: 例：12/20（六）台北 範例展演空間 售票中
+  - type: dropdown
+    id: preset
+    attributes:
+      label: 風格
+      options:
+        - 深夜彈唱（暖色、MV 歌詞）
+        - 器材評測（快節奏、每拍跳動）
+        - Live 燃炸（高對比、重拍閃光）
+    validations:
+      required: true
+  - type: input
+    id: start
+    attributes:
+      label: 副歌從哪裡開始（可不填）
+      description: 不填就讓 AI 自己找。要指定就寫 1:20 或 80。
+  - type: input
+    id: brand
+    attributes:
+      label: 品牌或藝名（可不填）
+  - type: dropdown
+    id: demucs
+    attributes:
+      label: 精準人聲分離
+      description: 用 Demucs 先把人聲和樂器分開，歌詞對位更準，但要多等幾分鐘。
+      options:
+        - 不要（比較快）
+        - 要（比較慢，歌詞對位更準）
