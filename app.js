@@ -20,6 +20,11 @@ const PUB = {
   Threads: 'https://www.threads.net',
 };
 const TASKS = [
+  ["brand", "品牌定位與資料缺口", "輸出 6 項：一句定位、3 個聽覺標籤、作品與故事、受眾假設、視覺與性格建議、待補證據"],
+  ["clips", "音樂短影音剪輯單", "輸出 3 支剪輯單：副歌情緒版（20–35 秒）、故事或教唱版（30–45 秒）、演出預告版（15–25 秒）"],
+  ["line", "LINE 歌迷與邀約流程", "輸出 5 項：歡迎訊息（100 字內）、六格選單、關鍵字回覆、活動邀約收件、真人交接與停發方式"],
+  ["agent", "每週 Agent 工作單", "輸出 6 項：研究核對、素材與授權、三支內容製作、人工審核、半自動發布與邀約交接、成效回顧"],
+
   ['all', '一支影片發全部平台', '影片內容或拍到的畫面'],
   ['short', '短影音標題與說明', '影片畫面重點'],
   ['post', '社群貼文', '想分享的事'],
@@ -51,7 +56,10 @@ const IC = {
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6a7 7 0 0 0 0 2.4l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
 };
-const VIEWS = [['home', '首頁'], ['content', '內容看板'], ['upload', '上傳影片'], ['studio', 'AI 文案'], ['events', '活動檔期'], ['templates', '範本庫'], ['settings', '設定']];
+IC.operations = '<path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h4"/>';
+const PLAYBOOK = [["goal", "本月目標與衡量方式", "例：新歌曝光、歌迷成長、有效活動邀約；每週記錄基準與結果"], ["positioning", "音樂定位與聽覺標籤", "例：台語抒情、真誠陪伴；區分來源描述與試聽判斷"], ["voice", "聲音特質與試聽紀錄", "記下曲名、時間碼、聲線、咬字與情緒；未聽過請寫待試聽"], ["works", "作品與故事", "作品名稱、正式連結、發行資料；故事請附來源與確認狀態"], ["visual", "視覺與性格呈現", "例：溫暖親切、舞台專業；主色、服裝、封面與避免的形象"], ["subtitles", "字幕規格", "例：白字深描邊、兩行內；台語歌詞人工校對，不擋臉與平台按鈕"], ["editing", "素材與剪輯方法", "例：副歌情緒、教唱亮點、舞台片段；先確認授權再交給剪輯引擎"], ["evidence", "來源、帳號用途與授權", "逐項記錄：網址｜個人或團隊帳號｜已核對或待確認｜可用範圍｜日期"], ["lineWelcome", "LINE 歡迎訊息", "例：歡迎加入！想聽新歌、看演出，或詢問活動邀約？請選一項。"], ["lineKeywords", "LINE 關鍵字與真人交接", "例：新歌→官方連結；邀約→類型、日期、地點、需求；報價由真人確認"]];
+const GATES = [['source', '來源、帳號歸屬已核對'], ['rights', '歌曲、影像與人物授權已確認'], ['review', '歌詞、字幕、文案已人工審核'], ['line', '官方 LINE 歡迎訊息與真人交接已測試'], ['metrics', '本週曝光、粉絲與邀約結果已記錄']];
+const VIEWS = [['home', '首頁'], ['content', '內容看板'], ['upload', '上傳影片'], ['studio', 'AI 文案'], ['events', '活動檔期'], ['operations', '品牌與運營'], ['templates', '範本庫'], ['settings', '設定']];
 
 // ===== 工具 =====
 const $ = (s) => document.querySelector(s);
@@ -86,16 +94,14 @@ function confirmBox({ title, body, ok }) {
     const d = document.createElement('dialog');
     d.className = 'dlg';
     d.setAttribute('aria-labelledby', 'dlg-t');
-    d.innerHTML = `<h2 id="dlg-t"></h2><p></p><div class="row end"><button class="btn ghost" value="no">取消</button><button class="btn danger" value="yes"></button></div>`;
-    d.querySelector('h2').textContent = title;
+    d.innerHTML = `<h1 id="dlg-t"></h1><p></p><form method="dialog" class="row end"><button class="btn ghost" value="no" autofocus>取消</button><button class="btn danger" value="yes"></button></form>`;
+    d.querySelector('h1').textContent = title;
     d.querySelector('p').textContent = body;
     d.querySelector('.danger').textContent = ok;
-    const done = (v) => { d.close(); d.remove(); resolve(v); };
-    d.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) done(b.value === 'yes'); else if (e.target === d) done(false); });
-    d.addEventListener('cancel', (e) => { e.preventDefault(); done(false); });
+    d.addEventListener('submit', (e) => e.stopPropagation());
+    d.addEventListener('close', () => { const yes = d.returnValue === 'yes'; d.returnValue = ''; d.remove(); resolve(yes); }, { once: true });
     document.body.appendChild(d);
     d.showModal();
-    d.querySelector('[value=no]').focus();
   });
 }
 // 欄位旁的錯誤訊息：送出時檢查，使用者一改就消失
@@ -104,11 +110,11 @@ function fieldError(el, msg) {
   const p = document.createElement('p');
   p.className = 'err'; p.id = el.id + '-err'; p.textContent = msg;
   el.setAttribute('aria-invalid', 'true');
-  el.setAttribute('aria-describedby', p.id);
+  el.setAttribute('aria-describedby', [el.getAttribute('aria-describedby'), p.id].filter(Boolean).join(' '));
   (el.closest('label') || el).after(p);
   return false;
 }
-function clearError(el) { el.removeAttribute('aria-invalid'); const p = document.getElementById(el.id + '-err'); if (p) p.remove(); }
+function clearError(el) { el.removeAttribute('aria-invalid'); const ids = (el.getAttribute('aria-describedby') || '').split(' ').filter((id) => id && id !== el.id + '-err'); if (ids.length) el.setAttribute('aria-describedby', ids.join(' ')); else el.removeAttribute('aria-describedby'); const p = document.getElementById(el.id + '-err'); if (p) p.remove(); }
 
 // ===== 狀態 =====
 const S = {
@@ -245,6 +251,85 @@ function vTemplates() {
   return `<div class="top"><div><h1 tabindex="-1">範本庫</h1><p class="sub">【】裡換成當天的內容就能發。要依情況改寫，用「AI 文案」。</p></div></div>
   <div class="tpl">${TPL.map(([t, x], i) => `<div class="outc"><b>${t}</b><pre id="t${i}">${esc(x.replaceAll('{brand}', b))}</pre><button class="btn sm ghost" data-act="copy" data-t="t${i}">複製</button></div>`).join('')}</div>`;
 }
+
+// ===== 品牌作戰手冊與半自動運營 =====
+function officialLine(value) {
+  try { const u = new URL(value); return u.protocol === 'https:' && ['line.me', 'lin.ee'].includes(u.hostname) && !u.username && !u.password && !u.port ? safeUrl(value) : ''; } catch { return ''; }
+}
+function playbookText() {
+  const s = S.settings || {};
+  return `# ${s.brand || '我的品牌'}｜品牌作戰手冊\n匯出日期：${today()}\n\n` +
+    [['intro', '品牌介紹'], ['fields', '業務範圍'], ['audience', '主要受眾'], ...PLAYBOOK.map(([k, l]) => [k, l]), ['lineUrl', '官方 LINE 好友連結']]
+      .map(([k, l]) => `## ${l}\n${s[k] || '【待填：' + l + '】'}`).join('\n\n') +
+    '\n\n## 本週人工檢查\n' + GATES.map(([k, l]) => `- [${(s.flowChecks || '').split('|').includes(k) ? 'x' : ' '}] ${l}`).join('\n') +
+    '\n\n## 工作路徑\n研究核對 → 授權素材 → 剪輯與文案 → 人工審核 → 平台發布／LINE 承接 → 成效回顧。\n這是作戰手冊與工作單；尚未連接 LINE、自動發訊息或自動執行 Agent。\n';
+}
+function campaignPanel() {
+  const packs = Array.isArray(window.Campaigns) ? window.Campaigns : [];
+  if (!packs.length) return '';
+  return `<section class="panel onboard"><h2>內建運營包</h2><p class="muted">直接套用已放在 GitHub 的配置，不必下載或選擇檔案。會更新品牌資料，已有的草稿卡保留。</p><div class="ops-actions">${packs.map((pack) => `<button type="button" class="btn ghost" data-act="apply-campaign" data-v="${esc(pack.id)}" ${S.campaignBusy ? 'disabled' : ''}>${S.campaignBusy === pack.id ? '正在套用…' : '套用' + esc(pack.name)}</button>`).join('')}</div><p id="campaign-result" role="status"></p></section>`;
+}
+async function applyCampaign(id) {
+  if (S.campaignBusy) return;
+  const pack = window.Campaigns?.find((x) => x.id === id);
+  if (!pack) return;
+  S.campaignBusy = id;
+  let message = '', started = false;
+  try {
+    const yes = await confirmBox({ title: `套用${pack.name}？`, body: '將更新指定的品牌欄位，上方尚未儲存的修改也會被取代。其他 AI、金鑰與引擎設定保留；已存在的同一張草稿卡保留你的修改，不會重複新增。這不會發文或發訊息。', ok: '套用運營包' });
+    if (!yes) return;
+    started = true;
+    if (S.view === 'operations') draw();
+    await load();
+    const existing = new Set(S.items.map((x) => x.id));
+    const data = { ...pack.data, items: pack.data.items.filter((x) => !existing.has(x.id)) };
+    const count = await B.importData(data);
+    await Promise.all([load(), loadSettings()]);
+    message = `已套用${pack.name}，新增 ${count} 張草稿卡；既有草稿卡保留。`;
+  } catch (err) { message = '套用未完成，請重試：' + err.message; }
+  finally {
+    S.campaignBusy = '';
+    if (started && S.view === 'operations') {
+      draw();
+      const result = $('#campaign-result');
+      if (result) result.textContent = message;
+      document.querySelector('[data-act="apply-campaign"]')?.focus({ preventScroll: true });
+    } else if (message) toast(message);
+  }
+}
+function vOperations() {
+  const s = S.settings || {}, done = PLAYBOOK.filter(([k]) => String(s[k] || '').trim()).length;
+  const line = officialLine(s.lineUrl), checks = (s.flowChecks || '').split('|');
+  const area = ([k, l, ph]) => `<div class="f"><label for="o-${k}">${l}</label><textarea id="o-${k}" name="${k}" maxlength="2000" rows="3" placeholder="${esc(ph)}">${esc(s[k] || '')}</textarea></div>`;
+  return `<div class="top"><div><h1 tabindex="-1">品牌與運營</h1><p class="sub">讓新歌被聽見，讓歌迷留下來，也讓活動邀約找到你。</p></div><button type="button" class="btn ghost" data-act="playbook">下載已儲存的手冊</button></div>
+  ${campaignPanel()}
+  <section class="panel onboard"><h2>先有依據，再開始製作</h2><p>已填 ${done}/${PLAYBOOK.length} 項。填寫進度不代表資料已驗證；經歷、帳號用途與授權請逐項核對。</p><p class="muted">個人檔案與團隊帳號分開記錄。聲音特質要有試聽時間碼，受眾先當假設，以結果驗證。</p></section>
+  <form id="opsf" class="form" aria-labelledby="ops-title" novalidate>
+    <h2 id="ops-title">品牌作戰手冊</h2>
+    <fieldset><legend>目標與品牌</legend>${PLAYBOOK.slice(0, 5).map(area).join('')}</fieldset>
+    <fieldset><legend>製作與證據</legend>${PLAYBOOK.slice(5, 8).map(area).join('')}</fieldset>
+    <fieldset><legend>官方 LINE：歌迷與邀約入口</legend><p id="line-help" class="muted">目前只保存規劃與好友連結，不會開戶或發訊息。私人 LINE 的好友需自行加入官方帳號；請勿在這裡填金鑰或歌迷個資。</p>
+    <div class="f"><label for="o-lineUrl">官方好友連結（尚未建立可留空）</label><input id="o-lineUrl" name="lineUrl" type="url" maxlength="2000" inputmode="url" autocapitalize="none" spellcheck="false" aria-describedby="line-help" placeholder="https://lin.ee/..." value="${esc(s.lineUrl || '')}"></div>
+    ${PLAYBOOK.slice(8).map(area).join('')}<p>${line ? `<a class="btn ghost" href="${esc(line)}" target="_blank" rel="noopener">測試官方好友連結</a>` : '<span class="tag s-wait">尚未填入官方好友連結</span>'}</p>
+    <details><summary>查看開設與承接步驟</summary><ol class="steps-mini"><li>以團隊可管理的身分建立官方帳號，設定名稱、頭像與管理員。</li><li>設定歡迎訊息及六格選單：聽新歌、看演出、關於我、活動邀約、學唱歌、聯絡團隊。</li><li>邀約先收類型、日期、時段、地點與需求；婚宴、主持、比賽、評審、廟宇慶典皆交真人確認。</li><li>在私人 LINE 放官方好友連結，讓對方自願加入；測試關鍵字、真人回覆及停發流程。</li><li>先用官方後台半自動運營。需要自動化時，再接 Messaging API 與伺服器，確認方案及訊息額度。</li></ol><a href="https://developers.line.biz/en/docs/messaging-api/getting-started/" target="_blank" rel="noopener">查看 LINE 官方設定說明</a></details></fieldset>
+    <fieldset><legend>本週人工檢查（每週重新確認）</legend><div class="ops-checks">${GATES.map(([k, l]) => `<label class="chip" for="gate-${k}"><input id="gate-${k}" name="gate" type="checkbox" value="${k}" ${checks.includes(k) ? 'checked' : ''}>${l}</label>`).join('')}</div><p class="muted">檢查勾選是人工紀錄，不會自動發布或替你確認授權。</p></fieldset>
+    <div class="row"><button type="submit" class="btn">儲存品牌與運營</button><span id="ops-result" role="status"></span></div>
+  </form>
+  <section class="panel ops-next"><h2>接著交給 AI 整理</h2><p class="muted">先儲存上方內容，再開工作單；未填資料會標記待補。沒有金鑰也能複製完整提示詞。</p><div class="ops-actions">${['brand', 'clips', 'line', 'agent'].map((k) => `<button type="button" class="btn ghost" data-act="ops-task" data-v="${k}">${esc(TASKS.find(([id]) => id === k)[1])}</button>`).join('')}</div><p>工作順序：研究核對 → 授權素材 → 剪輯與文案 → 人工審核 → 半自動發布 → 曝光、粉絲與邀約回顧。</p></section>`;
+}
+async function saveOperations() {
+  const f = $('#opsf'), b = f.querySelector('button[type=submit]'), result = $('#ops-result');
+  const link = $('#o-lineUrl');
+  if (link.value.trim() && !officialLine(link.value.trim())) { fieldError(link, '請貼上 https://line.me/ 或 https://lin.ee/ 開頭的官方好友連結'); link.focus(); return; }
+  const body = Object.fromEntries(PLAYBOOK.map(([k]) => [k, $('#o-' + k).value.trim()]));
+  body.lineUrl = link.value.trim();
+  body.flowChecks = [...f.querySelectorAll('[name=gate]:checked')].map((el) => el.value).join('|');
+  b.disabled = true; b.textContent = '正在儲存…';
+  try { await api('/api/settings', { method: 'PUT', body }); await loadSettings(); if (S.view === 'operations') { draw(); $('#ops-result').textContent = '已儲存，可下載手冊或開始 AI 工作單'; $('#opsf button[type=submit]').focus({ preventScroll: true }); } }
+  catch (err) { if (result.isConnected) result.textContent = err.message; }
+  finally { b.disabled = false; b.textContent = '儲存品牌與運營'; }
+}
+
 function vSettings() {
   const s = S.settings || {}, area = (k, l, ph, r = 2) => `<label class="f">${l}<textarea id="s-${k}" rows="${r}" placeholder="${esc(ph)}">${esc(s[k] || '')}</textarea></label>`;
   return `<div class="top"><div><h1 tabindex="-1">設定</h1><p class="sub">AI 會照這裡的品牌資料寫文案。</p></div></div>
@@ -262,7 +347,7 @@ function vSettings() {
   ${B.features.login ? `<form class="form panel" id="pwf" novalidate><h2>更改密碼</h2><div class="g2"><label class="f">目前密碼<input type="password" id="p-cur" autocomplete="current-password"></label><label class="f">新密碼（至少 8 個字）<input type="password" id="p-new" autocomplete="new-password"></label></div><div class="row"><button class="btn ghost">更改密碼</button></div></form>` : ''}
   <section class="panel narrow"><h2>備份與搬家</h2><p class="muted">${B.features.local ? '資料只存在這個瀏覽器。清除瀏覽器資料、換電腦或換瀏覽器前，先下載備份檔；到新地方再匯入。' : '定期下載一份備份放在自己的雲端硬碟。'}備份含內容、活動與設定，不含金鑰與影片檔。</p><p class="muted" id="usage"></p><div class="row"><button class="btn ghost" data-act="export">下載備份檔</button><label class="btn ghost">匯入備份檔<input type="file" id="imp" accept="application/json,.json" class="sr"></label></div></section>`;
 }
-const R = { home: vHome, content: vContent, upload: vUpload, studio: vStudio, events: vEvents, templates: vTemplates, settings: vSettings };
+const R = { home: vHome, content: vContent, upload: vUpload, studio: vStudio, events: vEvents, templates: vTemplates, settings: vSettings, operations: vOperations };
 
 // ===== 繪製 =====
 function draw(focus = false) {
@@ -271,6 +356,7 @@ function draw(focus = false) {
   if (!S.authed) { root.innerHTML = vGate(); $('#pw')?.focus(); return; }
   const y = window.scrollY;
   root.innerHTML = shell(R[S.view]());
+  document.title = `${VIEWS.find(([k]) => k === S.view)?.[1] || '首頁'}｜${S.settings?.brand || '我的品牌'}｜運營中控台`;
   if (focus) { window.scrollTo(0, 0); $('#main h1')?.focus({ preventScroll: true }); } else window.scrollTo(0, y);
   const on = document.querySelector('.nav a.on');
   if (on && innerWidth < 900) on.scrollIntoView({ inline: 'center', block: 'nearest' });
@@ -321,6 +407,7 @@ document.addEventListener('submit', async (e) => {
   }
   if (f.id === 'upf') upload();
   if (f.id === 'setf') saveSettings();
+  if (f.id === 'opsf') saveOperations();
   if (f.id === 'pwf') {
     const cur = $('#p-cur'), nx = $('#p-new');
     if (nx.value.length < 8) return fieldError(nx, '新密碼至少要 8 個字');
@@ -356,6 +443,9 @@ document.addEventListener('click', async (e) => {
   const a = b.dataset.act;
   if (a === 'filter') { S.filter = b.dataset.v; if (location.hash !== '#content') return; e.preventDefault(); draw(); return; }
   e.preventDefault();
+  if (a === 'apply-campaign') return applyCampaign(b.dataset.v);
+  if (a === 'playbook') return download(`品牌作戰手冊-${today()}.md`, playbookText());
+  if (a === 'ops-task') { S.studio = { task: b.dataset.v, input: '請依已儲存的品牌作戰手冊整理；缺資料請列待補。', out: [], busy: false, cid: '' }; location.hash = '#studio'; return; }
   if (a === 'logout') { await api('/api/logout', { method: 'POST', quiet: true }).catch(() => {}); S.authed = false; draw(); return; }
   if (a === 'copy') return copy($('#' + b.dataset.t).textContent);
   if (a === 'copyta') return copy(b.closest('details').querySelector('textarea').value);
@@ -435,13 +525,23 @@ async function saveSettings() {
 }
 
 // ===== 啟動 =====
+async function applyFreshCampaignLink() {
+  const id = new URL(location.href).searchParams.get('campaign');
+  const pack = window.Campaigns?.find((x) => x.id === id);
+  // 專屬連結只初始化空白工作區；既有工作區必須由本人按鈕確認套用。
+  if (!pack || S.items.length || S.settings?.hasKey) return;
+  const defaults = { brand: '我的品牌', intro: '', fields: '', audience: '', tone: '熱情、親切、專業，不浮誇', avoid: '', accent: '#c8102e', platforms: ['TikTok', 'YouTube', 'Facebook', 'Instagram', 'LINE'] };
+  if (Object.keys(pack.data.settings).some((key) => JSON.stringify(S.settings?.[key] ?? '') !== JSON.stringify(defaults[key] ?? ''))) return;
+  await B.importData(pack.data);
+  await Promise.all([load(), loadSettings()]);
+}
 (async () => {
   draw();
   try {
     const st = await api('/api/state', { quiet: true });
     S.setup = st.setup; S.authed = st.authed;
     if (/^#[0-9a-fA-F]{6}$/.test(st.accent || '')) document.documentElement.style.setProperty('--brand', st.accent);
-    if (S.authed) await Promise.all([load(), loadSettings()]);
+    if (S.authed) { await Promise.all([load(), loadSettings()]); await applyFreshCampaignLink(); }
   } catch (e) { toast('讀取資料失敗，請重新整理'); }
   S.boot = true; route();
 })();
