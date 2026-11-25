@@ -110,6 +110,10 @@ erDiagram
 | 空狀態 | 只有一句話 | 每個空狀態都附下一步按鈕 |
 | 測試 | 手動 | `npm test` 24 項瀏覽器全流程，CI 每次推送自動跑 |
 
+## AI 音樂剪輯引擎
+
+影片處理太吃運算，不放在瀏覽器或 Cloudflare，而是在 GitHub Actions 的雲端電腦執行：中控台的影片卡按「交給 AI 音樂剪輯」→ 預填 GitHub 需求表單 → `edit.yml` 工作流跑 `engine/` → 成品放到 Releases 並留言連結。詳見 [MUSIC-ENGINE.md](MUSIC-ENGINE.md)。
+
 ## 下一步可以做
 
 1. 瀏覽器內剪輯（ffmpeg.wasm）：剪頭尾、轉直式、壓字卡。

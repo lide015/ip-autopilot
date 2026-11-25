@@ -36,3 +36,20 @@ jobs:
       - run: npm ci
       - run: npx wrangler types
       - run: npx tsc --noEmit
+
+  engine:
+    name: AI 剪輯引擎
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-noto-cjk > /dev/null
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: engine/requirements.txt
+      - run: pip install -q -r engine/requirements.txt
+      - run: python -m engine.tests.test_engine

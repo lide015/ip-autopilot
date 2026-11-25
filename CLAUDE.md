@@ -16,7 +16,7 @@
 ## 完成前一定要做
 
 1. `npm test`（同步檢查＋語法檢查＋瀏覽器全流程測試）全部通過。
-2. 改到雲端版：`cd cloud && npx wrangler types && npx tsc --noEmit` 通過。
+2. 改到雲端版：`cd cloud && npx wrangler types && npx tsc --noEmit` 通過。改到 `engine/`：`python -m engine.tests.test_engine` 通過。
 3. 改到畫面：照 `.claude/skills/site-ui/SKILL.md` 的檢查表自我審核，手機 375 寬與桌機 1280 寬、淺色與深色都要能用。
 4. 新功能要在 `tests/smoke.mjs` 加測試；更新 `CHANGELOG.md`。
 5. PR 說明用繁中寫：改了什麼、使用者會看到什麼差別、怎麼測的。
@@ -31,6 +31,7 @@
 | `site-test` | 驗證改動、補測試 |
 | `site-review` | 審查別人（或自己）的 PR |
 | `site-release` | 發佈新版本 |
+| `music-engine` | AI 音樂剪輯引擎（`engine/`）與雲端剪輯工作流 |
 
 ## 檔案地圖
 
@@ -41,5 +42,6 @@ cloud/public/cloud-adapter.js   雲端版 adapter（呼叫 /api）
 cloud/src/index.ts              雲端版後端（Cloudflare Workers + D1 + R2）
 scripts/sync-cloud.mjs          把共用畫面同步到 cloud/public/
 tests/smoke.mjs                 瀏覽器全流程測試
-docs/                           架構、agent 工作流說明
+docs/                           架構、agent 工作流、音樂剪輯引擎說明
+engine/                         AI 音樂剪輯引擎（Python＋FFmpeg，在 GitHub Actions 執行）
 ```
