@@ -1,0 +1,17 @@
+{
+  "name": "ip-autopilot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "個人IP運營中控台：內容看板、影片上傳、AI 文案、活動檔期、半自動發布",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "types": "wrangler types",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "wrangler": "^4.168.0"
+  }
+}
